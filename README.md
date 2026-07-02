@@ -1,83 +1,226 @@
 # TechSolutions Dashboard
 
-Panel de administración (React + Vite + MUI) que consume el 100% de los endpoints
-reales expuestos por el backend Flask (`/api/auth`, `/api/usuarios`, `/api/clientes`,
-`/api/casos`, `/api/planes`, `/api/servicios`, `/api/solicitudes`, `/api/notificaciones`).
+Dashboard administrativo desarrollado con **React + Vite + Material UI**, diseñado como cliente de demostración para la API REST de **TechSolutions**.
+
+Su objetivo principal es **consumir, validar y visualizar el funcionamiento del 100% de los endpoints expuestos por el backend Flask**, permitiendo comprobar de forma interactiva todas las funcionalidades disponibles sin necesidad de utilizar herramientas como Postman o Insomnia.
+
+El proyecto implementa una arquitectura desacoplada donde toda la lógica de negocio reside en la API, mientras que el frontend actúa exclusivamente como consumidor de los recursos.
+
+---
+
+## Características principales
+
+- Consumo del **100% de los endpoints reales** del backend.
+- Autenticación completa mediante **JWT + Refresh Token**.
+- Renovación automática de tokens sin intervención del usuario.
+- Gestión centralizada de errores HTTP.
+- Interfaz completamente responsive.
+- Tema claro y oscuro.
+- Componentes reutilizables para tablas, formularios y diálogos.
+- Arquitectura modular y escalable.
+- Formularios generados a partir de los modelos de la API.
+- Soporte para filtros, paginación y búsqueda.
+- Manejo consistente de estados de carga, errores y listas vacías.
+
+---
+
+## API demostrada
+
+El dashboard consume íntegramente los siguientes módulos del backend:
+
+| Recurso        | Funcionalidades                                    |
+| -------------- | --------------------------------------------------- |
+| Auth           | Registro, Login, Refresh Token                     |
+| Usuarios       | Consulta de usuarios                               |
+| Clientes       | Alta, listado, detalle, modificación y baja lógica |
+| Casos          | Alta, listado, detalle, filtros y actualización    |
+| Planes         | CRUD (según capacidades del backend)               |
+| Servicios      | CRUD y consulta por plan                           |
+| Solicitudes    | Alta, listado, filtros y cambio de estado          |
+| Notificaciones | Alta, listado y marcado como leído                 |
+
+Todos los datos mostrados en pantalla provienen exclusivamente de la API. No existen datos simulados ni mocks.
+
+---
 
 ## Puesta en marcha
 
 ```bash
 npm install
-cp .env.example .env   # editar VITE_API_BASE_URL con la URL de tu backend Flask
-npm run dev             # http://localhost:5173
+
+cp .env.example .env
 ```
 
-Para build de producción:
+Configurar:
+
+```env
+VITE_API_BASE_URL=http://localhost:5000
+```
+
+Ejecutar el proyecto:
+
+```bash
+npm run dev
+```
+
+Frontend:
+
+```
+http://localhost:5173
+```
+
+Build de producción:
 
 ```bash
 npm run build
 npm run preview
 ```
 
-El backend debe tener **CORS habilitado** para el origen del frontend (`http://localhost:5173`
-en desarrollo), ya que el cliente HTTP corre en el navegador.
+---
+
+## Requisitos
+
+El backend Flask debe encontrarse en ejecución y tener habilitado CORS para el origen del frontend.
+
+```
+http://localhost:5173
+```
+
+---
 
 ## Arquitectura
 
 ```
 src/
-  api/            capa de acceso a la API (un archivo por recurso, todos sobre un axios client central)
-  components/
-    common/       DataTable, FormDialog, ConfirmDialog, StatusChip, EmptyState, ErrorState, PageHeader
-    layout/       Sidebar, Topbar, MainLayout, configuración de navegación
-  context/        AuthContext (sesión/JWT), ThemeModeContext (dark mode)
-  hooks/          usePaginatedResource (listado genérico con loading/error/paginación)
-  pages/          una página por módulo de negocio
-  routes/         ProtectedRoute (guard de sesión)
-  theme/          tokens de diseño + theme de MUI (claro/oscuro)
+│
+├── api/
+│   ├── client.js
+│   └── servicios por recurso
+│
+├── components/
+│   ├── common/
+│   └── layout/
+│
+├── context/
+│
+├── hooks/
+│
+├── pages/
+│
+├── routes/
+│
+├── theme/
+│
+└── utils/
 ```
 
-- **Autenticación JWT**: `src/api/client.js` adjunta el `access_token` en cada request
-  y renueva automáticamente con `refresh_token` ante un 401, reintentando la petición
-  original (con cola de requests concurrentes).
-- **Persistencia de sesión**: tokens y datos de usuario en `localStorage`
-  (`src/utils/tokenStorage.js`).
-- **Dark mode**: toggle en el topbar, persistido en `localStorage`.
-- **Formularios generados desde los modelos**: `FormDialog` recibe un arreglo de
-  campos (`{name, label, type, required, options}`) derivado 1:1 de los campos que
-  cada endpoint del backend acepta — no hay campos inventados.
-- **Manejo de errores**: interceptor centralizado en `client.js` (mensajes de red vs.
-  mensajes de backend), estados vacíos, error y skeletons en cada tabla.
+La aplicación implementa una separación clara entre:
 
-## ⚠️ Diferencias intencionales respecto de lo solicitado
+- Acceso a datos (API)
+- Presentación (React)
+- Gestión de estado
+- Autenticación
+- Componentes reutilizables
 
-El backend real **no expone** algunos endpoints/CRUDs completos que se piden
-típicamente en un dashboard admin. Se optó por reflejar fielmente lo que existe
-en vez de inventar rutas:
+Esto facilita el mantenimiento y permite incorporar nuevos módulos del backend con mínimo impacto.
 
-| Pedido                          | Realidad del backend                      | Resolución en el frontend                                                          |
-| ------------------------------- | ----------------------------------------- | ---------------------------------------------------------------------------------- |
-| Logout                          | No existe endpoint                        | Se limpia la sesión localmente (tokens + estado)                                   |
-| Perfil                          | No existe `/api/auth/me`                  | Se reutiliza `GET /api/usuarios/<usuario_id>` con el id guardado en sesión         |
-| CRUD completo de Usuarios       | Solo `GET` (list/detalle)                 | Módulo de solo lectura, con aviso explícito en la UI                               |
-| Eliminar Casos/Planes/Servicios | No hay `DELETE`                           | Sin botón de eliminar. Planes usa `PUT estado_plan=discontinuado` como baja lógica |
-| Editar Solicitudes              | El `PUT` solo cambia `estado_solicitud`   | Acción "Cambiar estado" en vez de edición completa                                 |
-| Editar Notificaciones           | El `PUT` solo marca como leída            | Acción "Marcar como leída" en vez de edición completa                              |
-| Eliminar Clientes               | Es una baja lógica (desactiva el usuario) | Botón "Desactivar" en vez de "Eliminar"                                            |
+---
 
-## Módulos y endpoints consumidos
+## Integración con la API
 
-- **Auth**: register, login, refresh (sin logout backend)
-- **Usuarios**: list, detalle (solo lectura)
-- **Clientes**: list paginado, detalle, alta, edición, baja lógica
-- **Casos**: list paginado + filtros, detalle, alta (asignación), actualización de estado/horas/notas
-- **Planes**: list, detalle, alta, edición (incluye baja lógica vía estado)
-- **Servicios**: list + filtros, detalle, por plan, alta, edición
-- **Solicitudes**: list paginado + filtros, detalle, alta, cambio de estado
-- **Notificaciones**: list paginado + filtro de leídas, alta, marcar como leída
+El cliente HTTP implementa una capa de comunicación robusta:
 
-## Dashboard principal
+### Autenticación
 
-Métricas agregadas (clientes, casos, solicitudes, usuarios, planes, servicios),
-gráfico de barras de casos recientes por estado, gráfico de torta de solicitudes
-recientes por estado, y dos listados de actividad reciente.
+- Login mediante JWT.
+- Refresh Token automático.
+- Reintento transparente de peticiones.
+- Cola de solicitudes concurrentes durante la renovación del token.
+
+### Persistencia
+
+La sesión se almacena en:
+
+```
+localStorage
+```
+
+guardando:
+
+- `access_token`
+- `refresh_token`
+- Información del usuario
+
+---
+
+## Experiencia de usuario
+
+El dashboard incorpora múltiples mecanismos para representar correctamente el estado de la API:
+
+- Skeletons durante las cargas.
+- Mensajes de error centralizados.
+- Estados vacíos.
+- Confirmaciones de acciones.
+- Chips de estado.
+- Paginación.
+- Filtros.
+- Búsquedas.
+
+De esta manera es posible verificar visualmente el comportamiento de cada endpoint frente a distintos escenarios.
+
+---
+
+## Dashboard
+
+La pantalla principal consolida información proveniente de múltiples endpoints mediante consultas independientes.
+
+Incluye:
+
+- Métricas generales
+- Cantidad de clientes
+- Cantidad de usuarios
+- Cantidad de casos
+- Cantidad de planes
+- Cantidad de servicios
+- Cantidad de solicitudes
+- Gráficos de distribución por estado
+- Actividad reciente
+
+Esto demuestra la capacidad de la API para alimentar paneles administrativos mediante consultas agregadas.
+
+---
+
+## Decisiones de implementación
+
+El objetivo del proyecto fue representar **exactamente las capacidades reales de la API**, evitando agregar funcionalidades inexistentes.
+
+Por ese motivo algunas acciones habituales en dashboards administrativos fueron adaptadas a las posibilidades del backend.
+
+| Funcionalidad           | Implementación                                  |
+| ------------------------ | ------------------------------------------------ |
+| Logout                  | Eliminación local de la sesión                  |
+| Perfil                  | Consulta del usuario autenticado mediante su ID |
+| Usuarios                | Módulo de solo lectura                          |
+| Eliminación de clientes | Baja lógica                                     |
+| Eliminación de planes   | Cambio de estado                                |
+| Solicitudes             | Cambio de estado únicamente                     |
+| Notificaciones          | Marcado como leído                              |
+
+Este enfoque garantiza que el frontend sea una representación fiel del contrato definido por la API.
+
+---
+
+## Objetivo del proyecto
+
+Más que un panel administrativo tradicional, este proyecto funciona como un **cliente de referencia** para la API de TechSolutions.
+
+Permite:
+
+- Validar el correcto funcionamiento de todos los endpoints.
+- Demostrar el flujo completo de autenticación mediante JWT.
+- Verificar operaciones CRUD reales.
+- Visualizar relaciones entre entidades.
+- Probar filtros, paginación y búsquedas.
+- Comprobar el manejo de errores y respuestas del servidor.
+
+En otras palabras, el dashboard constituye una demostración práctica del alcance y las capacidades de la API REST desarrollada para TechSolutions.
